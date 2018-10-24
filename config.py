@@ -26,3 +26,9 @@ class ProductConfig(Config):        #生产环境
 
     DEBUG = False
 
+#定义字典记录配置的对应关系
+config_dict = {
+
+    'dev':DevelopmentConfig,
+    'pro':ProductConfig
+}
