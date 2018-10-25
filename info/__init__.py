@@ -14,8 +14,8 @@ from config import config_dict
 
 #将数据库链接对象全局化（方便其他文件使用）
 
-db = None
-sr = None
+db = None   #type:SQLAlchemy
+sr = None   #type:StrictRedis
 
 
 #日志配置（将日志保存到文件中）
@@ -62,6 +62,15 @@ def create_app(config_type):
     #注册蓝图
     app.register_blueprint(home_blu)
 
+
+    from info.modules.passport import passport_blu
+    # 注册蓝图
+    app.register_blueprint(passport_blu)
     #配置日志
     setup_log()
+
+    #import * 这种语法不能在函数/方法中使用
+    # from info.models import *
+    import info.models
+
     return app
