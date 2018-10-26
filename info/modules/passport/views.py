@@ -1,9 +1,11 @@
+import random
 import re
 
 from flask import request, abort, current_app, make_response, Response, jsonify
 
 from info import sr
 from info.lib.captcha.pic_captcha import captcha
+from info.lib.yuntongxun.sms import CCP
 from info.modules.passport import passport_blu
 
 
@@ -38,8 +40,8 @@ def get_img_code():
 #获取短信验证码
 @passport_blu.route('/get_sms_code',methods =['POST'])
 def get_sms_code():
-    pass
     #获取参数
+    print('22222222222')
     img_code_id = request.json.get('img_code_id')
     img_code = request.json.get('img_code')
     mobile = request.json.get('mobile')
@@ -48,15 +50,37 @@ def get_sms_code():
         return jsonify(errno=RET.PARAMERR,errmsg=error_map[RET.PARAMERR])
 
     #校验手机格式
-    if not re.match(r"1[35678]\d{9}$"):
+    if not re.match(r"1[35678]\d{9}$",mobile):
         return jsonify(errno=RET.PARAMERR,errmsg=error_map[RET.PARAMERR])
-    #校验图片验证码
+    #校验图片验证码    根据图片key取出真实验证码文字
+    try:
+        real_img_code =  sr.get('img_code_id'+img_code_id)
+        print('sssss')
+    except BaseException as e:
+        current_app.logger.error(e)
+        return jsonify(RET.DBERR,error_map=error_map[RET.DBERR])
 
+    if real_img_code != img_code.upper():
+
+        return jsonify(errno=RET.PARAMERR,errmsg=error_map[RET.PARAMERR])
+
+    #生成随机验证码
+    rand_num = "%04d" % random.randint(0,9999)
+
+    #打印验证码
+    current_app.logger.info('短信验证码为：%s'% rand_num)
 
     #发送短信
-
+    response_code = CCP().send_template_sms(mobile, [rand_num, 5], 1)
+    if response_code != 0:
+        return jsonify(errno=RET.THIRDERR,errmsg=error_map[RET.THIRDERR])
 
     #保存短信验证码
-
+    try:
+        sr.set('sms_code_id_'+mobile,rand_num,ex=60)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.DBERR,errmsg=error_map[RET.DBERR])
 
     #返回json结果
+    return jsonify(errno=RET.OK,error_map=error_map[RET.OK])
