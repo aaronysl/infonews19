@@ -57,6 +57,8 @@ class User(BaseModel, db.Model):
     # 当前用户所发布的新闻
     news_list = db.relationship('News', backref='user', lazy='dynamic')
 
+    def check_password(self,password):
+        return check_password_hash(self.password_hash,password)
 
     @property
     def password(self):
