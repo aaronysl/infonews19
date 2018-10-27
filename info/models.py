@@ -58,6 +58,15 @@ class User(BaseModel, db.Model):
     news_list = db.relationship('News', backref='user', lazy='dynamic')
 
 
+    @property
+    def password(self):
+        raise AttributeError('该属性不可读取')
+
+
+    @password.setter
+    def password(self,value):
+        self.password_hash = generate_password_hash(value)
+
     def to_dict(self):
         resp_dict = {
             "id": self.id,
