@@ -69,7 +69,7 @@ class User(BaseModel, db.Model):
     def password(self,value):
         self.password_hash = generate_password_hash(value)
 
-    def to_dict(self):
+    def to_dict(self):   # 将模型对象中的数据转存到字典中, 在内部完成格式转换和格式判断
         resp_dict = {
             "id": self.id,
             "nick_name": self.nick_name,
