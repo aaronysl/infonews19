@@ -176,3 +176,10 @@ def login():
 
     # 返回json
     return jsonify(errno=RET.OK, errmsg=error_map[RET.OK])
+
+# 退出登录
+@passport_blu.route('/logout')
+def logout():
+    # 删除session中的user_id
+    session.pop("user_id", None)
+    return jsonify(errno=RET.OK, errmsg=error_map[RET.OK])
