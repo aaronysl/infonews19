@@ -94,7 +94,7 @@ def get_sms_code():
     return jsonify(errno=RET.OK,error_map=error_map[RET.OK])
 
 #用户注册
-@passport_blu.route('/register',metheds=['POST'])
+@passport_blu.route('/register',methods=['POST'])
 def register():
     #获取参数
     mobile = request.json.get('mobile')
@@ -138,6 +138,41 @@ def register():
     session['user_id'] = user.id
 
     #返回json结果
-    return jsonify(RET.OK,errmsg=error_map[RET.OK])
+    return jsonify(errno=RET.OK,errmsg=error_map[RET.OK])
 
 
+# 用户登录
+@passport_blu.route('/login', methods=['POST'])
+def login():
+    # 获取参数
+    mobile = request.json.get("mobile")
+    password = request.json.get("password")
+    # 校验参数
+    if not all([mobile, password]):
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    # 校验手机格式
+    if not re.match(r"1[35678]\d{9}$", mobile):
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    # 根据手机号查询用户信息
+    try:
+        user = User.query.filter_by(mobile=mobile).first()
+    except BaseException as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.DBERR, errmsg=error_map[RET.DBERR])
+
+    if not user:  # 没有该用户
+        return jsonify(errno=RET.NODATA, errmsg=error_map[RET.NODATA])
+
+    # 校验密码
+    if not user.check_password(password):
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    # 记录最后登录时间  使用sqlalchemy自动提交
+    user.last_login = datetime.now()
+    # 状态保持
+    session["user_id"] = user.id
+
+    # 返回json
+    return jsonify(errno=RET.OK, errmsg=error_map[RET.OK])
