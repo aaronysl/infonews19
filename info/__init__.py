@@ -73,4 +73,8 @@ def create_app(config_type):
     # from info.models import *
     import info.models
 
+    #添加过滤器
+    from info.utils.common import func_index_convert
+    app.add_template_filter(func_index_convert, "index_convert")
+
     return app
