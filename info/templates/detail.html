@@ -20,22 +20,32 @@
             <span class="comment fr">{{ news.comments_count }}</span>
         </div>
         {{ news.content | safe }}
-        <a href="javascript:;" class="collection block-center" data-newid="1" style="display: block;">收藏</a>
-        <!-- TODO 已收藏上边display为none,下边display为block; -->
-        <a href="javascript:;" class="collected block-center" data-newid="1" style="display: none;">
+        <a href="javascript:;" class="collection block-center" data-newid="{{ news.id }}"
+           style="display: {% if is_collected %}none{% else %}block{% endif %};">收藏</a>
+        <a href="javascript:;" class="collected block-center" data-newid="{{ news.id }}"
+           style="display: {% if is_collected %}block{% else %}none{% endif %};">
             <span class="out">已收藏</span><span class="over">取消收藏</span></a>
-        <div class="comment_form_logout">
-            登录发表你的评论
-        </div>
-        <form action="" class="comment_form" data-newsid="1">
-            <div class="person_pic">
-                <img src="../static/news/images/cat.jpg" alt="用户图标">
+
+        {% if user %}
+
+            <form action="" class="comment_form" data-newsid="{{ news.id }}">
+                <div class="person_pic">
+                    <img {% if user.avatar_url %}src="{{ user.avatar_url }}" {% else %}src="../static/news/images/cat.jpg"{% endif %} alt="用户图标">
+                </div>
+                <textarea placeholder="请发表您的评论" class="comment_input"></textarea>
+                <input type="submit" name="" value="评 论" class="comment_sub">
+            </form>
+
+        {% else %}
+
+            <div class="comment_form_logout">
+                登录发表你的评论
             </div>
-            <textarea placeholder="请发表您的评论" class="comment_input"></textarea>
-            <input type="submit" name="" value="评 论" class="comment_sub">
-        </form>
+
+        {% endif %}
+
         <div class="comment_count">
-            4条评论
+            {{ news.comments_count }}条评论
         </div>
         <div class="comment_list_con">
             <div class="comment_list">

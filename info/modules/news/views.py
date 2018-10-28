@@ -30,11 +30,19 @@ def news_detail(news_id):
     # 点击量加1
     news.clicks += 1
 
+    # 查询当前用户是否收藏了新闻
+    user = g.user
+    is_collected = False  # 记录是否收藏
+    if user:  # 用户登录
+        if news in user.collection_news:
+            is_collected = True
+
     # 将模型转为字典
-    user = g.user.to_dict() if g.user else None
+    user = user.to_dict() if user else None
 
     # 将数据传入模板渲染
-    return render_template("detail.html", news=news.to_dict(), news_list=news_list, user=user)
+    return render_template("detail.html", news=news.to_dict(), news_list=news_list, user=user,
+                           is_collected=is_collected)
 
 
 # 新闻收藏
