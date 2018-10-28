@@ -38,12 +38,19 @@ def news_detail(news_id):
         if news in user.collection_news:
             is_collected = True
 
+    # 查询该新闻的所有评论  按照生成日期排序
+    comments = []
+    try:
+        comments = news.comments.order_by(Comment.create_time.desc()).all()
+    except BaseException as e:
+        current_app.logger.error(e)
+
     # 将模型转为字典
     user = user.to_dict() if user else None
 
     # 将数据传入模板渲染
     return render_template("detail.html", news=news.to_dict(), news_list=news_list, user=user,
-                           is_collected=is_collected)
+                           is_collected=is_collected, comments=[comment.to_dict() for comment in comments])
 
 
 # 新闻收藏
