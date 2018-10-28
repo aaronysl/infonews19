@@ -1,6 +1,6 @@
 from info import sr
 from info.constants import HOME_PAGE_MAX_NEWS
-from info.models import User, News
+from info.models import User, News, Category
 from info.modules.home import home_blu
 import logging  # python内置的日志模块  将日志信息在控制台中输出, 并且可以将日志保存到文件中
 # flask中的默认日志也是集成的logging模块, 但是没有将日志保存到文件中
@@ -32,11 +32,21 @@ def index():
 
     news_list = [news.to_dict() for news in news_list]
 
+
+    #查询所有分类数据，后端模版渲染
+    categories = []
+    try:
+        categories = Category.query.all()
+    except BaseException as e:
+        current_app.logger.error(e)
+
     # 将模型转为字典
     user = user.to_dict() if user else None
 
+
+
     # TODO 将用户信息传入模板渲染
-    return render_template("index.html", user=user, news_list=news_list)
+    return render_template("index.html", user=user, news_list=news_list,categories=categories)
 
 
 @home_blu.route('/favicon.ico')

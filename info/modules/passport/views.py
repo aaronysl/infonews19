@@ -132,6 +132,7 @@ def register():
         db.session.commit()
     except BaseException as e:
         current_app.logger.error(e)
+        db.session.rollback()
         return jsonify(errno=RET.DBERR,errmsg=error_map[RET.DBERR])
 
     #状态保持（免密码登陆） 只需要保存用户id即可
