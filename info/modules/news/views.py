@@ -1,6 +1,7 @@
 from flask import render_template, current_app, abort, session, g, request, jsonify
 
-from info.models import News, User
+from info import db
+from info.models import News, User, Comment
 from info.modules.news import news_blu
 
 # 新闻详情
@@ -88,3 +89,60 @@ def news_collect():
 
     # json返回结果
     return jsonify(errno=RET.OK, errmsg=error_map[RET.OK])
+
+
+# 新闻评论/子评论
+@news_blu.route('/news_comment', methods=['POST'])
+@user_login_data
+def news_comment():
+    # 判断用户是否登录
+    user = g.user
+    if not user:
+        return jsonify(errno=RET.SESSIONERR, errmsg=error_map[RET.SESSIONERR])
+
+    # 获取参数
+    comment_content = request.json.get("comment")
+    news_id = request.json.get("news_id")
+    parent_id = request.json.get("parent_id")
+    # 校验参数
+    if not all([comment_content, news_id]):
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    # 校验新闻是否存在
+    try:
+        news_id = int(news_id)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    try:
+        news = News.query.get(news_id)
+    except BaseException as e:
+        return jsonify(errno=RET.DBERR, errmsg=error_map[RET.DBERR])
+
+    if not news:
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    # 生成评论模型
+    comment = Comment()
+    comment.content = comment_content
+    comment.user_id = user.id
+    comment.news_id = news.id
+    if parent_id:  # 子评论
+        try:
+            parent_id = int(parent_id)
+            comment.parent_id = parent_id
+        except BaseException as e:
+            current_app.logger.error(e)
+
+    try:
+        db.session.add(comment)
+        db.session.commit()  # 此处必须主动提交, 否则不会生成评论id, 无法回传给前端评论id
+
+    except BaseException as e:
+        current_app.logger.error(e)
+        db.session.rollback()
+        return jsonify(errno=RET.DBERR, errmsg=error_map[RET.DBERR])
+
+    # 返回json  需要返回评论数据
+    return jsonify(errno=RET.OK, errmsg=error_map[RET.OK], data=comment.to_dict())
