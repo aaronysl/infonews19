@@ -27,6 +27,9 @@ def news_detail(news_id):
 
     news_list = [news.to_dict() for news in news_list]
 
+    # 点击量加1
+    news.clicks += 1
+
     # 将模型转为字典
     user = g.user.to_dict() if g.user else None
 

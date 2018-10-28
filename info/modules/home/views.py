@@ -4,24 +4,16 @@ from info.models import User, News, Category
 from info.modules.home import home_blu
 import logging  # python内置的日志模块  将日志信息在控制台中输出, 并且可以将日志保存到文件中
 # flask中的默认日志也是集成的logging模块, 但是没有将日志保存到文件中
-from flask import current_app, render_template, session, request, jsonify
+from flask import current_app, render_template, session, request, jsonify, g
 
 # 2.使用蓝图注册路由
+from info.utils.common import user_login_data
 from info.utils.response_code import RET, error_map
 
 
 @home_blu.route('/')
+@user_login_data
 def index():
-    # 在根路由中判断用户是否登录
-    user_id = session.get("user_id")
-
-    user = None  # type: User
-    if user_id:  # 已登录
-        # 查询用户信息
-        try:
-            user = User.query.get(user_id)
-        except BaseException as e:
-            current_app.logger.error(e)
 
     # 按照`点击量`查询`前10条`新闻数据
     news_list = []
@@ -33,20 +25,19 @@ def index():
     news_list = [news.to_dict() for news in news_list]
 
 
-    #查询所有分类数据，后端模版渲染
+    # 查询所有的分类数据, 后端模板渲染
     categories = []
     try:
         categories = Category.query.all()
     except BaseException as e:
         current_app.logger.error(e)
 
+
     # 将模型转为字典
-    user = user.to_dict() if user else None
+    user = g.user.to_dict() if g.user else None
 
-
-
-    # TODO 将用户信息传入模板渲染
-    return render_template("index.html", user=user, news_list=news_list,categories=categories)
+    # 将用户信息传入模板渲染
+    return render_template("index.html", user=user, news_list=news_list, categories=categories)
 
 
 @home_blu.route('/favicon.ico')
