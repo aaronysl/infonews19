@@ -46,9 +46,12 @@ class User(BaseModel, db.Model):
 
     # 当前用户收藏的所有新闻
     collection_news = db.relationship("News", secondary=tb_user_collection, lazy="dynamic")  # 用户收藏的新闻
+    # 当前用户点赞的所有的评论
+    like_comments = db.relationship("Comment", secondary="info_comment_like", lazy="dynamic")
     # 用户所有的粉丝，添加了反向引用followed，代表用户都关注了哪些人(自关联多对多时,需要设置primaryjoin和secondaryjoin)
     followers = db.relationship('User',
                                 secondary=tb_user_follows,
+                                # 自关联多对多关系属性必须设置primaryjoin和secondaryjoin
                                 primaryjoin=(id == tb_user_follows.c.followed_id),  # 该关系属性根据哪个外键查, primaryjoin就设置哪个外键, 另一个设置为secondaryjoin
                                 secondaryjoin=(id == tb_user_follows.c.follower_id),
                                 backref=db.backref('followed', lazy='dynamic'),
@@ -57,19 +60,19 @@ class User(BaseModel, db.Model):
     # 当前用户所发布的新闻
     news_list = db.relationship('News', backref='user', lazy='dynamic')
 
-    def check_password(self,password):
-        return check_password_hash(self.password_hash,password)
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
     @property
     def password(self):
-        raise AttributeError('该属性不可读取')
-
+        raise AttributeError("该属性不可读取")
 
     @password.setter
-    def password(self,value):
+    def password(self, value):
         self.password_hash = generate_password_hash(value)
 
-    def to_dict(self):   # 将模型对象中的数据转存到字典中, 在内部完成格式转换和格式判断
+
+    def to_dict(self):  # 将模型对象中的数据转存到字典中, 在内部完成格式转换和格式判断
         resp_dict = {
             "id": self.id,
             "nick_name": self.nick_name,
@@ -159,8 +162,8 @@ class Comment(BaseModel, db.Model):
     news_id = db.Column(db.Integer, db.ForeignKey("info_news.id"), nullable=False)  # 新闻id
     content = db.Column(db.Text, nullable=False)  # 评论内容
     parent_id = db.Column(db.Integer, db.ForeignKey("info_comment.id"))  # 父评论id
-    # parent = db.relationship("Comment", remote_side=[id])  # 设置自关联多对一关系属性时, 需要设置remote_id
-    children = db.relationship('Comment',backref = db.backref('parent',remote_side = [id]))
+    # parent = db.relationship("Comment", remote_side=[id])  # 设置自关联多对一关系属性时, 需要设置remote_side
+    children = db.relationship("Comment", backref=db.backref("parent", remote_side=[id]))
     like_count = db.Column(db.Integer, default=0)  # 点赞条数
 
     def to_dict(self):

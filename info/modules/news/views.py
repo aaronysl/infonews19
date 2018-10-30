@@ -45,12 +45,27 @@ def news_detail(news_id):
     except BaseException as e:
         current_app.logger.error(e)
 
+    # 查询哪些评论被当前用户点过赞
+    comment_list = []
+    for comment in comments:
+        comment_dict = comment.to_dict()
+        is_like = False
+
+        if user:  # 用户已登录
+            # 该评论是否被"我"点赞
+            if comment in user.like_comments:
+                is_like = True
+
+        # 定义键值对记录是否被当前用户点过赞
+        comment_dict["is_like"] = is_like
+        comment_list.append(comment_dict)
+
     # 将模型转为字典
     user = user.to_dict() if user else None
 
     # 将数据传入模板渲染
     return render_template("detail.html", news=news.to_dict(), news_list=news_list, user=user,
-                           is_collected=is_collected, comments=[comment.to_dict() for comment in comments])
+                           is_collected=is_collected, comments=comment_list)
 
 
 # 新闻收藏
@@ -153,3 +168,50 @@ def news_comment():
 
     # 返回json  需要返回评论数据
     return jsonify(errno=RET.OK, errmsg=error_map[RET.OK], data=comment.to_dict())
+
+
+# 评论点赞
+@news_blu.route('/comment_like', methods=['POST'])
+@user_login_data
+def comment_like():
+    # 判断用户是否登录
+    user = g.user
+    if not user:
+        return jsonify(errno=RET.SESSIONERR, errmsg=error_map[RET.SESSIONERR])
+
+    # 获取参数
+    comment_id = request.json.get("comment_id")
+    action = request.json.get("action")
+    # 校验参数
+    if not all([comment_id, action]):
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    if action not in ["add", "remove"]:
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    try:  # 格式转换
+        comment_id = int(comment_id)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    # 查询并校验是否存在该评论
+    try:
+        comment = Comment.query.get(comment_id)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.DBERR, errmsg=error_map[RET.DBERR])
+
+    if not comment:
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    # 根据action执行点赞/取消点赞  (使用关系属性来建立/解除关系)
+    if action == "add":  # 点赞
+        user.like_comments.append(comment)
+        comment.like_count += 1
+    else:  # 取消点赞
+        user.like_comments.remove(comment)
+        comment.like_count -= 1
+
+    # json返回结果
+    return jsonify(errno=RET.OK, errmsg=error_map[RET.OK])
