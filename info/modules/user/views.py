@@ -81,6 +81,31 @@ def pic_info():
     # 需要回传用户信息, 以便前端来更新头像
     return jsonify(errno=RET.OK, errmsg=error_map[RET.OK], data=user.to_dict())
 
+# 显示/修改密码
+@user_blu.route('/pass_info', methods=['GET', 'POST'])
+@user_login_data
+def pass_info():
+    # 判断用户是否登录
+    user = g.user
+    if not user:
+        return abort(403)
+
+    if request.method == "GET":
+        return render_template("user_pass_info.html")
+
+    #post处理
+    old_password = request.json.get("old_password")
+    new_password = request.json.get("new_password")
+    if not all([old_password,new_password]):
+        return jsonify(errno=RET.PARAMERR,errmsg=error_map[RET.PARAMERR])
+
+    #校验密码
+    if not user.check_password(old_password):
+        return jsonify(errno=RET.PARAMERR, errmsg="密码错误")
+
+    #校验正确，修改密码
+    user.password = new_password
+    return jsonify(errno=RET.OK,errmsg=error_map[RET.OK])
 
 # 我的收藏列表
 @user_blu.route('/collection')
