@@ -45,6 +45,8 @@ def news_detail(news_id):
     except BaseException as e:
         current_app.logger.error(e)
 
+    # 正常情况下, 查询到某个数据后, 关系属性会将该数据的所有关联数据都查询出来(如果不需要关联数据,会很影响性能)
+    # 可以给关系属性设置lazy参数="dynamic", 这样关系属性就不会自动查询关联数据, 而是使用具体查询查询条件时才会查询(all/count/first)
     # 查询哪些评论被当前用户点过赞
     comment_list = []
     for comment in comments:
@@ -53,6 +55,7 @@ def news_detail(news_id):
 
         if user:  # 用户已登录
             # 该评论是否被"我"点赞
+            # 设置了lazy的关系属性在和in联用时, 会自动进行all()查询
             if comment in user.like_comments:
                 is_like = True
 
