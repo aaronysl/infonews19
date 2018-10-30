@@ -1,7 +1,7 @@
-from flask import render_template, g, redirect, url_for, abort, request, jsonify
+from flask import render_template, g, redirect, url_for, abort, request, jsonify, current_app
 
 from info.modules.user import user_blu
-from info.utils.common import user_login_data
+from info.utils.common import user_login_data, file_upload
 
 # 个人中心
 from info.utils.response_code import RET, error_map
@@ -45,4 +45,36 @@ def base_info():
     user.gender = gender
 
     # json返回  需要传入用户信息, 以便前端进行渲染
+    return jsonify(errno=RET.OK, errmsg=error_map[RET.OK], data=user.to_dict())
+
+
+# 显示/修改头像
+@user_blu.route('/pic_info', methods=['GET', 'POST'])
+@user_login_data
+def pic_info():
+    user = g.user
+    if not user:
+        return abort(403)  # 拒绝访问
+
+    if request.method == 'GET':
+        return render_template("user_pic_info.html", user=user.to_dict())
+    # POST处理
+    file = request.files.get("avatar")
+    try:
+        img_bytes = file.read()  # 读取上传文件的二进制格式数据  bytes
+        # 一般上传的文件会放到一个单独的文件服务器中进行管理  只需要获取文件名
+        try:
+            file_name = file_upload(img_bytes)
+        except BaseException as e:
+            current_app.logger.error(e)
+            return jsonify(errno=RET.THIRDERR, errmsg=error_map[RET.THIRDERR])
+
+        # 修改用户模型
+        user.avatar_url = file_name
+
+    except BaseException as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    # 需要回传用户信息, 以便前端来更新头像
     return jsonify(errno=RET.OK, errmsg=error_map[RET.OK], data=user.to_dict())

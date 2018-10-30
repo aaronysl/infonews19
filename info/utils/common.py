@@ -35,3 +35,29 @@ def user_login_data(f):  # f = news_detail
         return f(*args, **kwargs)
 
     return wrapper
+
+
+# 上传文件
+def file_upload(data):
+    """
+    上传文件
+    :param data:  要上传的二进制数据
+    :return: 文件服务器中的文件名称
+    """
+
+    import qiniu
+
+    access_key = "kJ8wVO7lmFGsdvtI5M7eQDEJ1eT3Vrygb4SmR00E"
+    secret_key = "rGwHyAvnlLK7rU4htRpNYzpuz0OHJKzX2O1LWTNl"
+    bucket_name = "infonews" # 空间名称
+
+    q = qiniu.Auth(access_key, secret_key)
+    key = None  # 设置上传文件名, 如果设置None则生成随机名称
+
+    token = q.upload_token(bucket_name)
+    # 上传文件
+    ret, info = qiniu.put_data(token, key, data)
+    if ret is not None:  # 上传成功, 返回文件名
+        return ret.get("key")
+    else:
+       raise BaseException(info)
