@@ -1,5 +1,7 @@
 from flask import render_template, g, redirect, url_for, abort, request, jsonify, current_app
 
+from info.constants import USER_COLLECTION_MAX_NEWS
+from info.models import tb_user_collection
 from info.modules.user import user_blu
 from info.utils.common import user_login_data, file_upload
 
@@ -78,3 +80,36 @@ def pic_info():
 
     # 需要回传用户信息, 以便前端来更新头像
     return jsonify(errno=RET.OK, errmsg=error_map[RET.OK], data=user.to_dict())
+
+
+# 我的收藏列表
+@user_blu.route('/collection')
+@user_login_data
+def collection():
+    user = g.user
+    if not user:
+        return abort(403)  # 拒绝访问
+
+    # 获取参数
+    p = request.args.get("p", 1)
+    try:
+        p = int(p)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return abort(403)
+
+    # 查询当前用户收藏的所有新闻  按照收藏时间倒序
+    try:
+        pn = user.collection_news.order_by(tb_user_collection.c.create_time.desc()).paginate(p,
+                                                                                             USER_COLLECTION_MAX_NEWS)
+    except BaseException as e:
+        current_app.logger.error(e)
+
+    data = {
+        "news_list": [news.to_dict() for news in pn.items],
+        "cur_page": p,
+        "total_page": pn.pages
+    }
+
+    # 将新闻数据传入模板渲染
+    return render_template("user_collection.html", data=data)
