@@ -1,7 +1,8 @@
 from flask import render_template, g, redirect, url_for, abort, request, jsonify, current_app
 
-from info.constants import USER_COLLECTION_MAX_NEWS
-from info.models import tb_user_collection, Category
+from info import db
+from info.constants import USER_COLLECTION_MAX_NEWS, QINIU_DOMIN_PREFIX
+from info.models import tb_user_collection, Category, News
 from info.modules.user import user_blu
 from info.utils.common import user_login_data, file_upload
 
@@ -81,32 +82,6 @@ def pic_info():
     # 需要回传用户信息, 以便前端来更新头像
     return jsonify(errno=RET.OK, errmsg=error_map[RET.OK], data=user.to_dict())
 
-# 显示/修改密码
-@user_blu.route('/pass_info', methods=['GET', 'POST'])
-@user_login_data
-def pass_info():
-    # 判断用户是否登录
-    user = g.user
-    if not user:
-        return abort(403)
-
-    if request.method == "GET":
-        return render_template("user_pass_info.html")
-       #return current_app.send_static_file("news/html/user_pass_info.html")    写死的也页面可以使用静态展示
-
-    #post处理
-    old_password = request.json.get("old_password")
-    new_password = request.json.get("new_password")
-    if not all([old_password,new_password]):
-        return jsonify(errno=RET.PARAMERR,errmsg=error_map[RET.PARAMERR])
-
-    #校验密码
-    if not user.check_password(old_password):
-        return jsonify(errno=RET.PARAMERR, errmsg="密码错误")
-
-    #校验正确，修改密码
-    user.password = new_password
-    return jsonify(errno=RET.OK,errmsg=error_map[RET.OK])
 
 # 我的收藏列表
 @user_blu.route('/collection')
@@ -141,25 +116,129 @@ def collection():
     return render_template("user_collection.html", data=data)
 
 
+# 显示/修改密码
+@user_blu.route('/pass_info', methods=['GET', 'POST'])
+@user_login_data
+def pass_info():
+    user = g.user
+    if not user:
+        return abort(403)  # 拒绝访问
+
+    if request.method == 'GET':  # 显示页面
+        return render_template("user_pass_info.html")
+        #return current_app.send_static_file("news/html/user_pass_info.html")   显示静态页面可用
+
+    # POST处理
+    # 获取参数
+    old_password = request.json.get("old_password")
+    new_password = request.json.get("new_password")
+    # 校验参数
+    if not all([old_password, new_password]):
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+    # 校验密码
+    if not user.check_password(old_password):  # 密码错误
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+    # 修改密码(修改模型)
+    user.password = new_password
+    # json返回
+    return jsonify(errno=RET.OK, errmsg=error_map[RET.OK])
+
+
 # 新闻发布
 @user_blu.route('/news_release', methods=['GET', 'POST'])
 @user_login_data
 def news_release():
-    # 判断用户是否登录
     user = g.user
     if not user:
-        return abort(403)   #拒绝访问
+        return abort(403)  # 拒绝访问
 
-    if request.method == "GET": #显示页面
-
-        #查询所有分类，传入模版
+    if request.method == 'GET':  # 显示页面
+        # 查询所有的分类, 传入模板
         try:
             categories = Category.query.all()
         except BaseException as e:
             current_app.logger.error(e)
-            return abort(403)
+            return abort(403)  # 拒绝访问
 
-        if len(categories): #删除最新
+        if len(categories):  # 删除最新
             categories.pop(0)
 
-        return render_template("user_news_release.html",categories=categories)
+        return render_template("user_news_release.html", categories=categories)
+
+    # POST处理
+    title = request.form.get("title")
+    category_id = request.form.get("category_id")
+    digest = request.form.get("digest")
+    content = request.form.get("content")
+    if not all([title, category_id, digest, content]):
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    try:
+        category_id = int(category_id)
+        category = Category.query.get(category_id)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    if not category:
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    # 生成新闻数据
+    news = News()
+    news.title = title
+    news.digest = digest
+    news.content = content
+    news.category_id = category_id
+    news.source = "个人发布"  # 新闻来源
+    news.user_id = user.id  # 新闻作者
+    news.status = 1  # 状态 1表示待审核
+    # 设置图片
+    try:
+        img_bytes = request.files.get("index_image").read()
+        # 上传图片, 获取图片的访问链接
+        try:
+            file_name = file_upload(img_bytes)
+            news.index_image_url = QINIU_DOMIN_PREFIX + file_name
+
+        except BaseException as e:
+            current_app.logger.error(e)
+            return jsonify(errno=RET.THIRDERR, errmsg=error_map[RET.THIRDERR])
+
+    except BaseException as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    db.session.add(news)
+
+    return jsonify(errno=RET.OK, errmsg=error_map[RET.OK])
+
+
+# 我的发布列表
+@user_blu.route('/news_list')
+@user_login_data
+def news_list():
+    user = g.user
+    if not user:
+        return abort(403)  # 拒绝访问
+
+    # 获取参数
+    p = request.args.get("p", 1)
+    try:
+        p = int(p)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return abort(403)
+    # 查询当前用户发布的所有新闻  按照发布时间倒序
+    try:
+        pn = user.news_list.order_by(News.create_time.desc()).paginate(p, USER_COLLECTION_MAX_NEWS)
+    except BaseException as e:
+        current_app.logger.error(e)
+
+    data = {
+        "news_list": [news.to_review_dict() for news in pn.items],
+        "cur_page": p,
+        "total_page": pn.pages
+    }
+
+    # 将新闻数据传入模板渲染
+    return render_template("user_news_list.html", data=data)
