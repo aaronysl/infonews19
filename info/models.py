@@ -35,7 +35,7 @@ class User(BaseModel, db.Model):
     mobile = db.Column(db.String(11), unique=True, nullable=False)  # 手机号
     avatar_url = db.Column(db.String(256))  # 用户头像路径
     last_login = db.Column(db.DateTime, default=datetime.now)  # 最后一次登录时间
-    is_admin = db.Column(db.Boolean, default=False)
+    is_admin = db.Column(db.Boolean, default=False)     # 记录用户是否为管理员
     signature = db.Column(db.String(512))  # 用户签名
     gender = db.Column(  # 订单的状态
         db.Enum(
