@@ -1354,3 +1354,14 @@ body{
 .ui-pagination-container .ui-pagination-page-item:hover{
     color:#333;
 }
+
+
+
+.back_to_top{
+    position: fixed;
+    bottom:30px;
+    right: 30px;
+    border:1px solid #888;
+}
+
+

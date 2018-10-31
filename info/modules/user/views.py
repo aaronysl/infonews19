@@ -1,7 +1,7 @@
 from flask import render_template, g, redirect, url_for, abort, request, jsonify, current_app
 
 from info.constants import USER_COLLECTION_MAX_NEWS
-from info.models import tb_user_collection
+from info.models import tb_user_collection, Category
 from info.modules.user import user_blu
 from info.utils.common import user_login_data, file_upload
 
@@ -92,6 +92,7 @@ def pass_info():
 
     if request.method == "GET":
         return render_template("user_pass_info.html")
+       #return current_app.send_static_file("news/html/user_pass_info.html")    写死的也页面可以使用静态展示
 
     #post处理
     old_password = request.json.get("old_password")
@@ -138,3 +139,27 @@ def collection():
 
     # 将新闻数据传入模板渲染
     return render_template("user_collection.html", data=data)
+
+
+# 新闻发布
+@user_blu.route('/news_release', methods=['GET', 'POST'])
+@user_login_data
+def news_release():
+    # 判断用户是否登录
+    user = g.user
+    if not user:
+        return abort(403)   #拒绝访问
+
+    if request.method == "GET": #显示页面
+
+        #查询所有分类，传入模版
+        try:
+            categories = Category.query.all()
+        except BaseException as e:
+            current_app.logger.error(e)
+            return abort(403)
+
+        if len(categories): #删除最新
+            categories.pop(0)
+
+        return render_template("user_news_release.html",categories=categories)
