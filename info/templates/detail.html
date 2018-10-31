@@ -96,8 +96,8 @@
             <div class="author_resume">{{ news.author.signature }}</div>
             <div class="writings"><span>总篇数</span><b>{{ news.author.news_count }}</b></div>
             <div class="follows"><span>粉丝</span><b>{{ news.author.followers_count }}</b></div>
-            <a href="javascript:;" class="focus fr" style="display: block" data-userid="{{ news.author.id }}">关注</a>
-            <a href="javascript:;" class="focused fr" style="display: none" data-userid="{{ news.author.id }}"><span class="out">已关注</span><span class="over">取消关注</span></a>
+            <a href="javascript:;" class="focus fr" style="display: {% if is_followed %}none{% else %}block{% endif %}" data-userid="{{ news.author.id }}">关注</a>
+            <a href="javascript:;" class="focused fr" style="display: {% if is_followed %}block{% else %}none{% endif %}" data-userid="{{ news.author.id }}"><span class="out">已关注</span><span class="over">取消关注</span></a>
         </div>
     {% endif %}
 {% endblock %}
