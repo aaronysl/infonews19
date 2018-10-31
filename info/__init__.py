@@ -1,7 +1,7 @@
 from logging.handlers import RotatingFileHandler
 
 import logging
-from flask import Flask
+from flask import Flask, render_template, g
 from flask_migrate import Migrate
 from flask_session import Session
 from flask_sqlalchemy import SQLAlchemy
@@ -86,4 +86,14 @@ def create_app(config_type):
     from info.utils.common import func_index_convert
     app.add_template_filter(func_index_convert, "index_convert")
 
+
+
+    from info.utils.common import user_login_data
+
+    @app.errorhandler(404)
+    @user_login_data
+    def err_handle_404(e):
+
+        user = g.user.to_dict() if g.user else None
+        return render_template('404.html',user=user)
     return app
