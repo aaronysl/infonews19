@@ -218,3 +218,48 @@ def comment_like():
 
     # json返回结果
     return jsonify(errno=RET.OK, errmsg=error_map[RET.OK])
+
+
+# 关注作者
+@news_blu.route('/followed_user', methods=['POST'])
+@user_login_data
+def followed_user():
+    # 判断用户是否登录
+    user = g.user
+    if not user:
+        return jsonify(errno=RET.SESSIONERR, errmsg=error_map[RET.SESSIONERR])
+
+    # 获取参数
+    author_id = request.json.get("user_id")
+    action = request.json.get("action")
+    # 校验参数
+    if not all([author_id, action]):
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    if action not in ["follow", "unfollow"]:
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    try:  # 格式转换
+        author_id = int(author_id)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    # 查询并校验是否存在该作者
+    try:
+        author = User.query.get(author_id)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.DBERR, errmsg=error_map[RET.DBERR])
+
+    if not author:
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    # 根据action执行滚珠/取消关注  (使用关系属性来建立/解除关系)
+    if action == "follow":  # 关注
+        user.followed.append(author)
+    else:  # 取消关注
+        user.followed.remove(author)
+
+    # json返回结果
+    return jsonify(errno=RET.OK, errmsg=error_map[RET.OK])
