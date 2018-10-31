@@ -17,7 +17,7 @@ def user_info():
     if not user:  # 用户未登录, 直接跳转到首页
         return redirect(url_for("home.index"))
 
-    return render_template("user.html", user=user.to_dict())
+    return render_template("news/user.html", user=user.to_dict())
 
 
 # 基本资料
@@ -29,7 +29,7 @@ def base_info():
         return abort(403)  # 拒绝访问
 
     if request.method == 'GET':
-        return render_template("user_base_info.html", user=user.to_dict())
+        return render_template("news/user_base_info.html", user=user.to_dict())
     # POST处理
     signature = request.json.get("signature")
     nick_name = request.json.get("nick_name")
@@ -60,7 +60,7 @@ def pic_info():
         return abort(403)  # 拒绝访问
 
     if request.method == 'GET':
-        return render_template("user_pic_info.html", user=user.to_dict())
+        return render_template("news/user_pic_info.html", user=user.to_dict())
     # POST处理
     file = request.files.get("avatar")
     try:
@@ -113,7 +113,7 @@ def collection():
     }
 
     # 将新闻数据传入模板渲染
-    return render_template("user_collection.html", data=data)
+    return render_template("news/user_collection.html", data=data)
 
 
 # 显示/修改密码
@@ -125,7 +125,7 @@ def pass_info():
         return abort(403)  # 拒绝访问
 
     if request.method == 'GET':  # 显示页面
-        return render_template("user_pass_info.html")
+        return render_template("news/user_pass_info.html")
         #return current_app.send_static_file("news/html/user_pass_info.html")   显示静态页面可用
 
     # POST处理
@@ -163,7 +163,7 @@ def news_release():
         if len(categories):  # 删除最新
             categories.pop(0)
 
-        return render_template("user_news_release.html", categories=categories)
+        return render_template("news/user_news_release.html", categories=categories)
 
     # POST处理
     title = request.form.get("title")
@@ -241,4 +241,4 @@ def news_list():
     }
 
     # 将新闻数据传入模板渲染
-    return render_template("user_news_list.html", data=data)
+    return render_template("news/user_news_list.html", data=data)

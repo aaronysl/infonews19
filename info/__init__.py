@@ -73,7 +73,9 @@ def create_app(config_type):
 
     from info.modules.user import user_blu
     app.register_blueprint(user_blu)
-    
+
+    from info.modules.admin import admin_blu
+    app.register_blueprint(admin_blu)
 
     #配置日志
     setup_log()
@@ -95,5 +97,5 @@ def create_app(config_type):
     def err_handle_404(e):
 
         user = g.user.to_dict() if g.user else None
-        return render_template('404.html',user=user)
+        return render_template('news/404.html', user=user)
     return app

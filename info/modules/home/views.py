@@ -37,7 +37,7 @@ def index():
     user = g.user.to_dict() if g.user else None
 
     # 将用户信息传入模板渲染
-    return render_template("index.html", user=user, news_list=news_list, categories=categories)
+    return render_template("news/index.html", user=user, news_list=news_list, categories=categories)
 
 
 @home_blu.route('/favicon.ico')
