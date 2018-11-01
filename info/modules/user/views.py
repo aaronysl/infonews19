@@ -221,7 +221,7 @@ def news_list():
     if not user:
         return abort(403)  # 拒绝访问
 
-    # 获取参数
+    # 获取当前页码
     p = request.args.get("p", 1)
     try:
         p = int(p)
@@ -242,3 +242,43 @@ def news_list():
 
     # 将新闻数据传入模板渲染
     return render_template("news/user_news_list.html", data=data)
+
+
+# 显示我的关注
+@user_blu.route('/user_follow')
+@user_login_data
+def user_follow():
+    # 判断用户是否登录
+    user = g.user
+    if not user:
+        return abort(403)
+    # 获取当前页码
+    p = request.args.get("p", 1)
+
+    try:
+        p = int(p)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return abort(403)
+
+
+    # 查询当前用户关注的所有作者  指定页码
+    author_list = []
+    cur_page = 1
+    total_page = 1
+    try:
+        pn = user.followed.paginate(p, USER_COLLECTION_MAX_NEWS)
+        author_list = [author.to_dict() for author in pn.items]
+        cur_page = pn.page
+        total_page = pn.pages
+
+    except BaseException as e:
+        current_app.logger.error(e)
+
+    data = {
+        "author_list": author_list,
+        "cur_page": cur_page,
+        "total_page": total_page
+    }
+    # 后端渲染收藏的新闻
+    return render_template("news/user_follow.html", data=data)
