@@ -3,9 +3,9 @@ from datetime import datetime, timedelta
 
 from flask import render_template, request, current_app, redirect, url_for, session, g, abort, jsonify
 
-from info.constants import ADMIN_USER_PAGE_MAX_COUNT
-from info.utils.common import user_login_data
-from info.models import User, News
+from info.constants import ADMIN_USER_PAGE_MAX_COUNT, QINIU_DOMIN_PREFIX
+from info.utils.common import user_login_data, file_upload
+from info.models import User, News, Category
 from info.modules.admin import admin_blu
 
 
@@ -268,3 +268,126 @@ def news_review_action():
 
     # json返回结果
     return jsonify(errno=RET.OK, errmsg=error_map[RET.OK])
+
+#新闻编辑列表
+@admin_blu.route('/news_edit')
+def news_edit():
+    #获取参数
+    p = request.args.get("p", 1)
+    keyword = request.args.get("keyword")
+
+    # 校验参数
+    try:
+        p = int(p)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return abort(403)
+
+    filter_list = []
+    if keyword:  # 搜索
+        filter_list.append(News.title.contains(keyword))
+
+    #查询所有的新闻数据
+    try:
+        pn = News.query.filter(*filter_list).paginate(p, ADMIN_USER_PAGE_MAX_COUNT)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return abort(500)
+
+    data = {
+        "news_list": [news.to_review_dict() for news in pn.items],
+        "cur_page": p,
+        "total_page": pn.pages
+    }
+
+    # 模板渲染
+    return render_template("admin/news_edit.html", data=data)
+
+#新闻编辑详情
+@admin_blu.route('/news_edit_detail')
+def news_edit_detail():
+    news_id = request.args.get('news_id')
+    try:
+        news_id = int(news_id)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return abort(403)
+
+    # 查询新闻数据
+    try:
+        news = News.query.get(news_id)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return abort(500)
+
+    if not news:
+        return abort(403)
+
+    # 查询所有的的分类
+    try:
+        categories = Category.query.filter(Category.id != 1).all()
+    except BaseException as e:
+        current_app.logger.error(e)
+        return abort(500)
+
+    # 标出新闻对应的当前分类
+    category_list = []
+    for category in categories:
+        category_dict = category.to_dict()
+        is_selected = False
+        # 判断该分类是否为当前新闻的分类
+        if category.id == news.category_id:
+            is_selected = True
+
+        category_dict["is_selected"] = is_selected
+        category_list.append(category_dict)
+
+    # 模板渲染
+    return render_template("admin/news_edit_detail.html", news=news.to_dict(), category_list=category_list)
+
+
+@admin_blu.route('/news_edit_detail', methods=['POST'])
+def news_edit_action():  # 同一个蓝图实现的视图函数名不能相同, 函数标记会冲突
+    # 获取参数
+    news_id = request.form.get("news_id")
+    title = request.form.get("title")
+    category_id = request.form.get("category_id")
+    digest = request.form.get("digest")
+    content = request.form.get("content")
+    index_image = request.files.get("index_image")
+    # 校验参数
+    if not all([news_id, title, category_id, digest, content]):
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    # 查询新闻模型
+    try:
+        news_id = int(news_id)
+        news = News.query.get(news_id)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    if not news:
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    # 修改新闻数据
+    news.title = title
+    news.digest = digest
+    news.content = content
+    news.category_id = category_id
+    if index_image:  # 修改图片
+        try:
+            img_bytes = index_image.read()
+            file_name = file_upload(img_bytes)
+            news.index_image_url = QINIU_DOMIN_PREFIX + file_name
+        except BaseException as e:
+            current_app.logger.error(e)
+            return jsonify(errno=RET.THIRDERR, errmsg=error_map[RET.THIRDERR])
+
+    # json返回
+    return jsonify(errno=RET.OK, errmsg=error_map[RET.OK])
+
+
+
+
+
