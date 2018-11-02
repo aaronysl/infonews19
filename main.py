@@ -40,6 +40,7 @@ def create_superuser(username,password):
         print('数据库操作失败')
     print('生成管理员成功')
 
+#添加测试数据
 def add_test_users():
     from info import db
     from info.models import User

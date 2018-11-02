@@ -56,7 +56,9 @@ def login():
 @user_login_data
 def index():
 
-    return render_template("admin/index.html", user=g.user.to_dict())
+    user = g.user
+
+    return render_template("admin/index.html", user=user.to_dict())
 
 
 # 后台退出登录
