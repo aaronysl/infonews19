@@ -1,7 +1,7 @@
 import time
 from datetime import datetime, timedelta
 
-from flask import render_template, request, current_app, redirect, url_for, session, g, abort
+from flask import render_template, request, current_app, redirect, url_for, session, g, abort, jsonify
 
 from info.constants import ADMIN_USER_PAGE_MAX_COUNT
 from info.utils.common import user_login_data
@@ -10,6 +10,9 @@ from info.modules.admin import admin_blu
 
 
 # 后台登录
+from info.utils.response_code import RET, error_map
+
+
 @admin_blu.route('/login', methods=['GET', "POST"])
 def login():
 
@@ -204,3 +207,64 @@ def news_review():
 
     # 模板渲染
     return render_template("admin/news_review.html", data=data)
+
+
+#新闻审核详情
+@admin_blu.route('/news_review_detail/<int:news_id>')
+def news_review_detail(news_id):    #参数接收路由变量
+    #查询新闻数据
+    try:
+        news=News.query.get(news_id)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return abort(500)
+
+    if not news:
+        return abort(403)
+
+
+    #模板渲染
+    return render_template('admin/news_review_detail.html',news=news.to_dict())
+
+
+@admin_blu.route('/news_review_action', methods=['POST'])
+def news_review_action():
+    # 获取参数
+    action = request.json.get("action")
+    news_id = request.json.get("news_id")
+
+    # 校验参数
+    if not all([action, news_id]):
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    if action not in ["accept", "reject"]:
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    try:
+        news_id = int(news_id)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    # 查询新闻数据
+    try:
+        news = News.query.get(news_id)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.DBERR, errmsg=error_map[RET.DBERR])
+
+    if not news:
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    # 根据action设置新闻的状态
+    if action == "accept":
+        news.status = 0
+    else:
+        reason = request.json.get("reason")
+        if not reason:
+            return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+        news.status = -1
+        news.reason = reason
+
+    # json返回结果
+    return jsonify(errno=RET.OK, errmsg=error_map[RET.OK])
