@@ -1,8 +1,9 @@
 import time
 from datetime import datetime, timedelta
 
-from flask import render_template, request, current_app, redirect, url_for, session, g
+from flask import render_template, request, current_app, redirect, url_for, session, g, abort
 
+from info.constants import ADMIN_USER_PAGE_MAX_COUNT
 from info.utils.common import user_login_data
 from info.models import User
 from info.modules.admin import admin_blu
@@ -106,7 +107,9 @@ def user_count():
     except BaseException as e:
         current_app.logger.error(e)
 
+    # 记录日注册人数    注册时间 >= 某日0点, < 次日0点
     active_count = []
+    # 记录统计时间
     active_time = []
     # 获取 前30天 每日的注册人数 (注册日期 >= 某日0点, <次日0点)
     for i in range(0, 30):
@@ -124,6 +127,7 @@ def user_count():
         except BaseException as e:
             current_app.logger.error(e)
 
+    #列表反转
     active_count.reverse()
     active_time.reverse()
     data = {
@@ -135,3 +139,33 @@ def user_count():
     }
 
     return render_template("admin/user_count.html", data=data)
+
+
+#用户列表
+@admin_blu.route('/user_list')
+def user_list():
+    # 获取参数
+    p = request.args.get("p", 1)
+
+    # 校验参数
+    try:
+        p = int(p)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return abort(403)
+
+    # 查询 所有的用户数据
+    try:
+        pn = User.query.filter(User.is_admin == False).paginate(p, ADMIN_USER_PAGE_MAX_COUNT)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return abort(500)
+
+    data = {
+        "user_list": [user.to_admin_dict() for user in pn.items],
+        "cur_page": p,
+        "total_page": pn.pages
+    }
+
+    # 模板渲染
+    return render_template("admin/user_list.html", data=data)
