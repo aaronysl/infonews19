@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 
 from flask import render_template, request, current_app, redirect, url_for, session, g, abort, jsonify
 
+from info import db
 from info.constants import ADMIN_USER_PAGE_MAX_COUNT, QINIU_DOMIN_PREFIX
 from info.utils.common import user_login_data, file_upload
 from info.models import User, News, Category
@@ -388,6 +389,48 @@ def news_edit_action():  # 同一个蓝图实现的视图函数名不能相同, 
     return jsonify(errno=RET.OK, errmsg=error_map[RET.OK])
 
 
+@admin_blu.route('/news_type', methods=['GET', 'POST'])
+def news_type():
+    if request.method == "GET":  # 显示页面
+        # 查询所有的分类, 传入模板
+        categories = []
+        try:
+            categories = Category.query.filter(Category.id != 1).all()
+        except BaseException as e:
+            current_app.logger.error(e)
+
+        return render_template("admin/news_type.html", categories=categories)
+
+    # POST处理
+    id = request.json.get("id")
+    name = request.json.get("name")
+    if not name:
+        return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+    if id:  # 修改
+        try:
+            id = int(id)
+        except BaseException as e:
+            current_app.logger.error(e)
+            return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+        try:
+            category = Category.query.get(id)
+        except BaseException as e:
+            current_app.logger.error(e)
+            return jsonify(errno=RET.DBERR, errmsg=error_map[RET.DBERR])
+
+        if not category:
+            return jsonify(errno=RET.PARAMERR, errmsg=error_map[RET.PARAMERR])
+
+        category.name = name
+
+    else:  # 新增
+        new_category = Category()
+        new_category.name = name
+        db.session.add(new_category)
+
+    return jsonify(errno=RET.OK, errmsg=error_map[RET.OK])
 
 
 
