@@ -5,7 +5,7 @@ from flask import render_template, request, current_app, redirect, url_for, sess
 
 from info.constants import ADMIN_USER_PAGE_MAX_COUNT
 from info.utils.common import user_login_data
-from info.models import User
+from info.models import User, News
 from info.modules.admin import admin_blu
 
 
@@ -169,3 +169,38 @@ def user_list():
 
     # 模板渲染
     return render_template("admin/user_list.html", data=data)
+
+
+#新闻审核列表
+@admin_blu.route('/news_review')
+def news_review():
+    # 获取参数
+    p = request.args.get("p", 1)
+    keyword = request.args.get("keyword")
+
+    # 校验参数
+    try:
+        p = int(p)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return abort(403)
+
+    filter_list = []
+    if keyword:  # 搜索
+        filter_list.append(News.title.contains(keyword))
+
+    # 查询 所有的新闻数据
+    try:
+        pn = News.query.filter(*filter_list).paginate(p, ADMIN_USER_PAGE_MAX_COUNT)
+    except BaseException as e:
+        current_app.logger.error(e)
+        return abort(500)
+
+    data = {
+        "news_list": [news.to_review_dict() for news in pn.items],
+        "cur_page": p,
+        "total_page": pn.pages
+    }
+
+    # 模板渲染
+    return render_template("admin/news_review.html", data=data)
